@@ -9,6 +9,7 @@ import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,10 +24,10 @@ import org.json.simple.JSONObject;
 class Ingest {
 
     //kde mate spusten ES
-    private String hostES = "localhost";
+    private String hostES = "es.vse.cz";
     private String portES = "9200";
     // upravte si cestu k datovym souborum
-    private String pathToData = "C:\\Users\\jelineiv\\Dropbox\\The Analytical Company\\data";
+    private String pathToData = "/Users/ivanjelinek/Dropbox/The Analytical Company/data";
 
     public Ingest() {
         //vytvori indexy a priradi jim analyzery
@@ -74,12 +75,23 @@ class Ingest {
                 lineJS.put("user", randomGenerator.nextInt(5000));
                 if (i <= 1000){
                     lineJS.put("segment", "A");
+                    lineJS.put("country", "RU");
                 }
                 if (i <= 3000 && i > 1000){
                     lineJS.put("segment", "B");
+                    lineJS.put("country", "FR");
                 } else {
                     lineJS.put("segment", "C");
+                    lineJS.put("country", "CZ");
                 }
+                double minLat = -90.00;
+    double maxLat = 90.00;      
+    double latitude = minLat + (double)(Math.random() * ((maxLat - minLat) + 1));
+    double minLon = 0.00;
+    double maxLon = 180.00;     
+    double longitude = minLon + (double)(Math.random() * ((maxLon - minLon) + 1));
+    DecimalFormat df = new DecimalFormat("#.##");
+                lineJS.put("location", df.format(longitude).replace(",", ".") +","+df.format(latitude).replace(",", "."));
                 URL url = new URL("http://" + hostES + ":" + portES + "/" + index + "/" + type + "/" + i);
                 System.out.println(sendRQ(url, "PUT", lineJS.toString()));
                 line = br.readLine();
@@ -117,14 +129,18 @@ class Ingest {
      * @param typ k namapovani
      */
     private void prepareMapping(String index, String typ) {
-        //String mappingBody = "{\"properties\": {\"czech\": {\"type\":\"string\",\"analyzer\": \"czech\"}}}";
+        //String mappingBody = "{\"properties\": {\"body\": {\"type\":\"string\",\"analyzer\": \"czech\"}}}";
         JSONObject child = new JSONObject();
         child.put("type", "string");
         child.put("analyzer", "czech");
         JSONObject czech = new JSONObject();
-        czech.put("czech", child);
+        czech.put("body", child);
+        JSONObject geotype = new JSONObject();
+        geotype.put("type", "geo_point");
+        czech.put("location", geotype);
         JSONObject mappingBody = new JSONObject();
         mappingBody.put("properties", czech);
+        //System.out.println(mappingBody);
         try {
             System.out.println(sendRQ(new URL("http://" + hostES + ":" + portES+"/" + index + "/_mapping/" + typ), "POST", mappingBody.toString()));
         } catch (MalformedURLException ex) {
