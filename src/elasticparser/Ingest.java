@@ -100,7 +100,7 @@ class Ingest {
                 lonlatArr.add(Double.parseDouble(df.format(latitude).replace(",", ".")));
                 //lineJS.put("location", df.format(longitude).replace(",", ".") +","+df.format(latitude).replace(",", "."));
                 lineJS.put("location", lonlatArr);
-                SimpleDateFormat date = new SimpleDateFormat("HH:mm:SS dd.MM.yyyy");
+                SimpleDateFormat date = new SimpleDateFormat("HH:mm:ss dd.MM.yyyy");
                 
                 lineJS.put("timestamp", date.format(new Date()));
                 System.out.println(lineJS.toString());
@@ -157,6 +157,7 @@ class Ingest {
         czech.put("location", geotype);
         JSONObject timestamp = new JSONObject();
         timestamp.put("type", "date");
+        timestamp.put("format", "HH:mm:ss dd.MM.yyyy");
         czech.put("timestamp", timestamp);
         JSONObject mappingBody = new JSONObject();
         mappingBody.put("properties", czech);
