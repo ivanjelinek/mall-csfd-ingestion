@@ -100,7 +100,9 @@ class Ingest {
                 lonlatArr.add(Double.parseDouble(df.format(latitude).replace(",", ".")));
                 //lineJS.put("location", df.format(longitude).replace(",", ".") +","+df.format(latitude).replace(",", "."));
                 lineJS.put("location", lonlatArr);
-                lineJS.put("timestamp", new SimpleDateFormat("HH24:mm:ss dd.mm.yyyy")+"");
+                SimpleDateFormat date = new SimpleDateFormat("HH:mm:SS dd.MM.yyyy");
+                
+                lineJS.put("timestamp", date.format(new Date()));
                 System.out.println(lineJS.toString());
                 URL url = new URL("http://" + hostES + ":" + portES + "/" + index + "/" + type + "/" + i);
                 System.out.println(sendRQ(url, "PUT", lineJS.toString()));
