@@ -10,15 +10,18 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 /**
- * Trida pro zpracovani dat - index CSFD a MALL
- * Urceno pro studenty VŠE v Praze - Kompetencniho centra pro nestrukturovana data
- * 
+ * Trida pro zpracovani dat - index CSFD a MALL Urceno pro studenty VŠE v Praze
+ * - Kompetencniho centra pro nestrukturovana data
+ *
  * @author Ivan Jelinek
  */
 class Ingest {
@@ -27,7 +30,7 @@ class Ingest {
     private String hostES = "es.vse.cz";
     private String portES = "9200";
     // upravte si cestu k datovym souborum
-    private String pathToData = "/Users/ivanjelinek/Dropbox/The Analytical Company/data";
+    private String pathToData = "C:\\Users\\jelineiv\\Dropbox\\The Analytical Company\\data";
 
     public Ingest() {
         //vytvori indexy a priradi jim analyzery
@@ -53,8 +56,9 @@ class Ingest {
     }
 
     /**
-     * Metoda nacte soubory a radek po radku je rozparsuje do zadaneho indexu a typu
-     * 
+     * Metoda nacte soubory a radek po radku je rozparsuje do zadaneho indexu a
+     * typu
+     *
      * @param soubor cesta k souboru
      * @param index index v ES
      * @param type typ v ES
@@ -64,20 +68,20 @@ class Ingest {
             BufferedReader br = new BufferedReader(new FileReader(soubor));
             String line = br.readLine();
             int i = 1;
-            
+
             Random randomGenerator = new Random();
-            
+
             while (line != null) {
                // line = line.replaceAll("\\\\", "");
-               // line = "{ \"body\" : \"" + line.replaceAll("\"", "") + "\"}";
+                // line = "{ \"body\" : \"" + line.replaceAll("\"", "") + "\"}";
                 JSONObject lineJS = new JSONObject();
                 lineJS.put("body", line);
                 lineJS.put("user", randomGenerator.nextInt(5000));
-                if (i <= 1000){
+                if (i <= 1000) {
                     lineJS.put("segment", "A");
                     lineJS.put("country", "RU");
                 }
-                if (i <= 3000 && i > 1000){
+                if (i <= 3000 && i > 1000) {
                     lineJS.put("segment", "B");
                     lineJS.put("country", "FR");
                 } else {
@@ -85,13 +89,19 @@ class Ingest {
                     lineJS.put("country", "CZ");
                 }
                 double minLat = -90.00;
-    double maxLat = 90.00;      
-    double latitude = minLat + (double)(Math.random() * ((maxLat - minLat) + 1));
-    double minLon = 0.00;
-    double maxLon = 180.00;     
-    double longitude = minLon + (double)(Math.random() * ((maxLon - minLon) + 1));
-    DecimalFormat df = new DecimalFormat("#.##");
-                lineJS.put("location", df.format(longitude).replace(",", ".") +","+df.format(latitude).replace(",", "."));
+                double maxLat = 90.00;
+                double latitude = minLat + (double) (Math.random() * ((maxLat - minLat) + 1));
+                double minLon = -180.00;
+                double maxLon = 180.00;
+                double longitude = minLon + (double) (Math.random() * ((maxLon - minLon) + 1));
+                DecimalFormat df = new DecimalFormat("#.##");
+                JSONArray lonlatArr = new JSONArray();
+                lonlatArr.add(Double.parseDouble(df.format(longitude).replace(",", ".")));
+                lonlatArr.add(Double.parseDouble(df.format(latitude).replace(",", ".")));
+                //lineJS.put("location", df.format(longitude).replace(",", ".") +","+df.format(latitude).replace(",", "."));
+                lineJS.put("location", lonlatArr);
+                lineJS.put("timestamp", new SimpleDateFormat("HH24:mm:ss dd.mm.yyyy")+"");
+                System.out.println(lineJS.toString());
                 URL url = new URL("http://" + hostES + ":" + portES + "/" + index + "/" + type + "/" + i);
                 System.out.println(sendRQ(url, "PUT", lineJS.toString()));
                 line = br.readLine();
@@ -109,7 +119,7 @@ class Ingest {
 
     /**
      * Metoda vytvori index v ES
-     * 
+     *
      * @param index nazev indexu, ktery ma byt vytvoren
      */
     private void createIndex(String index) {
@@ -119,12 +129,13 @@ class Ingest {
             System.out.println(sendRQ(url, "PUT", analyzer));
         } catch (MalformedURLException ex) {
             Logger.getLogger(Ingest.class.getName()).log(Level.SEVERE, null, ex);
-        } 
+        }
     }
 
     /**
-     * Metoda vytvori mapovani pro analyzer k indexu a typu, ktery je specifikovan
-     * 
+     * Metoda vytvori mapovani pro analyzer k indexu a typu, ktery je
+     * specifikovan
+     *
      * @param index mapovani, ktere ma byt vytvoren
      * @param typ k namapovani
      */
@@ -137,12 +148,19 @@ class Ingest {
         czech.put("body", child);
         JSONObject geotype = new JSONObject();
         geotype.put("type", "geo_point");
+        //JSONObject validate = new JSONObject();
+        geotype.put("validate", true);
+        geotype.put("lat_lon", true);
+        //validate.put("validate", true);
         czech.put("location", geotype);
+        JSONObject timestamp = new JSONObject();
+        timestamp.put("type", "date");
+        czech.put("timestamp", timestamp);
         JSONObject mappingBody = new JSONObject();
         mappingBody.put("properties", czech);
-        //System.out.println(mappingBody);
+        System.out.println(mappingBody);
         try {
-            System.out.println(sendRQ(new URL("http://" + hostES + ":" + portES+"/" + index + "/_mapping/" + typ), "POST", mappingBody.toString()));
+            System.out.println(sendRQ(new URL("http://" + hostES + ":" + portES + "/" + index + "/_mapping/" + typ), "POST", mappingBody.toString()));
         } catch (MalformedURLException ex) {
             Logger.getLogger(Ingest.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -150,7 +168,7 @@ class Ingest {
 
     /**
      * Metoda odesle RQ skrze REST API
-     * 
+     *
      * @param hostES IP adresa ES
      * @param portES port ES
      * @param index index, kam se ma zprava poslat
@@ -173,13 +191,13 @@ class Ingest {
 
         } catch (MalformedURLException ex) {
             Logger.getLogger(Ingest.class.getName()).log(Level.SEVERE, null, ex);
-        } 
+        }
         return null;
     }
 
     /**
      * Pretizena verze metody pro odelsani pozadavku
-     * 
+     *
      * @param url URL ES - cely string
      * @param method GET, POST, PUT, DELETE
      * @return String ES odpoved
@@ -190,7 +208,7 @@ class Ingest {
 
     /**
      * Pretizena verze metody, ktera skutecne odesle REST RQ
-     * 
+     *
      * @param url URL string pro pripojeni k ES
      * @param method GET POST PUT DELETE
      * @param message JSON zprava
